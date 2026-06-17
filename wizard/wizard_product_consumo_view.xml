@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data> 
+        <record id="view_wizard_product_consumo_form" model="ir.ui.view">
+            <field name="name">wizard.product.consumo.form</field>
+            <field name="model">wizard.product.consumo</field>
+            <field name="arch" type="xml">
+                <form string="Radiografía de Consumo de Producto">
+                    <sheet>
+                        <div class="oe_title">
+                            <h2><field name="product_id" readonly="1" options="{'no_open': True}"/></h2>
+                        </div>
+                        
+                        <group string="Filtro por Rango Personalizado" name="filtros_rango">
+                            <group col="3">
+                                <field name="fecha_desde"/>
+                                <field name="fecha_hasta"/>
+                                
+                                <div class="text-left" style="padding-top: 25px;">
+                                    <button string=" Calcular Rango" 
+                                            name="action_calcular_consumo" 
+                                            type="object" 
+                                            class="btn-primary fa fa-refresh"
+                                            style="font-weight: bold; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"/>
+                                </div>
+                            </group>
+                        </group>
+
+                        <hr style="margin-top: 20px; margin-bottom: 20px;"/>
+
+                        <group name="fechas_registro" col="4">
+                            <field name="fecha_primer_consumo" placeholder="Sin consumos registrados"/>
+                            <field name="fecha_ultimo_consumo" placeholder="Sin consumos registrados"/>
+                        </group>
+
+                        <hr style="margin-top: 20px; margin-bottom: 20px;"/>
+
+                        <group string="Resultados del Análisis de Consumo" name="resultados_periodos">
+                            <group>
+                                <field name="consumo_3_meses" style="font-weight: bold; color: #2196F3; font-size: 14px;"/>
+                                <field name="consumo_1_ano" style="font-weight: bold; color: #4CAF50; font-size: 14px;"/>
+                                <field name="consumo_3_anos" style="font-weight: bold; color: #FF9800; font-size: 14px;"/>
+                            </group>
+                            <group>
+                                <field name="consumo_historico" style="font-weight: bold; color: #9C27B0; font-size: 14px;"/>
+                                <field name="consumo_personalizado" style="font-weight: bold; color: #E91E63; background-color: #FFF0F5; font-size: 14px; padding: 4px; border-radius: 3px;"/>
+                            </group>
+                        </group>
+                    </sheet>
+                    <footer>
+                        <button string="Cerrar" class="btn-secondary" special="cancel" style="border-radius: 4px;"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+    </data> 
+</odoo>

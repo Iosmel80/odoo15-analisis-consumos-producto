@@ -1,0 +1,2 @@
+from.import wizard_product_consumo
+from.import wizard_rango_lista

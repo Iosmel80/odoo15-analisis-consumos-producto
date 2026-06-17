@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_wizard_product_consumo,wizard.product.consumo,model_wizard_product_consumo,stock.group_stock_user,1,1,1,1
+access_report_consumo_analisis,report.consumo.analisis,model_report_consumo_analisis,stock.group_stock_user,1,0,0,0

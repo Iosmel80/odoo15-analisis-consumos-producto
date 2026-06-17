@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_template_form_view_inherit_consumo_full" model="ir.ui.view">
+        <field name="name">product.template.form.inherit.consumo.full</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='general_information']" position="inside">
+                <hr style="margin-top: 20px; margin-bottom: 20px;"/>
+                
+                <group string="Análisis de Consumo de Producto" name="analisis_consumo_ficha">
+                    <group>
+                        <field name="consumo_3m" readonly="1" style="font-weight: bold; color: #2196F3; font-size: 14px;"/>
+                        <field name="consumo_1y" readonly="1" style="font-weight: bold; color: #4CAF50; font-size: 14px;"/>
+                        <field name="consumo_3y" readonly="1" style="font-weight: bold; color: #FF9800; font-size: 14px;"/>
+                    </group>
+                    <group>
+                        <field name="consumo_historico" readonly="1" style="font-weight: bold; color: #9C27B0; font-size: 14px;"/>
+                        
+                        <label for="action_abrir_wizard_consumo" string="Filtro Avanzado"/>
+                        <div class="o_row">
+                            <button name="action_abrir_wizard_consumo" 
+                                    string="Analizar Rango Personalizado" 
+                                    type="object" 
+                                    icon="fa-calculator" 
+                                    class="btn-primary"
+                                    style="font-weight: bold; padding: 4px 8px; border-radius: 4px;"/>
+                        </div>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+   
+    <!--CREAR CAMPO CONSUMO EN VISTA TREE-->
+    <record id="product_template_tree_view_inherit_dinamico" model="ir.ui.view">
+        <field name="name">product.template.tree.inherit.dinamico</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='qty_available']" position="after">
+                <field name="consumo_filtrado" 
+                string="Consumo" 
+                optional="show"
+                sum="Total Consumo Seleccionado" 
+                decoration-bf="1"
+                decoration-info="1"
+                />
+            </xpath>
+        </field>
+    </record>
+    <!--CREAR OPCIONES DE FILTROS EN LA VISTA TREE-->
+   
+    <record id="product_template_search_view_inherit_consumo" model="ir.ui.view">
+        <field name="name">product.template.search.inherit.consumo</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='filter_to_sell']" position="before">
+                <filter string="Consumo: Últimos 3 Meses" name="consumo_3m" context="{'filtro_consumo': '3m'}"/>
+                <filter string="Consumo: Último Año" name="consumo_1y" context="{'filtro_consumo': '1y'}"/>
+                <filter string="Consumo: Últimos 3 Años" name="consumo_3y" context="{'filtro_consumo': '3y'}"/>
+                <separator/>
+                
+                <filter string="Consumo: Rango Personalizado" name="consumo_rango_nativo" 
+                        date="create_date"
+                        context="{'filtro_consumo': 'rango_personalizado'}"
+                        help="Selecciona un período específico de fechas para el cálculo de consumos"/>
+                <separator/>
+            </xpath>
+        </field>
+    </record>
+    
+</odoo>
