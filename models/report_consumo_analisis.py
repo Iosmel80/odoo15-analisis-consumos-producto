@@ -44,6 +44,10 @@ class ReportConsumoAnalisis(models.Model):
         string='Existencia Total',
         readonly=True,
     )
+    warehouse_summary = fields.Char(
+        string='Existencias por Almacén/Ubicación',
+        readonly=True,
+    )
     total_pending_receipt = fields.Float(
         string='Total Pendiente de Recepción',
         readonly=True,
@@ -126,25 +130,40 @@ class ReportConsumoAnalisis(models.Model):
                     SELECT
                         sq.product_id,
                         sw.id AS warehouse_id,
+                        COALESCE(sw.name, loc.name) AS warehouse_name,
                         SUM(sq.quantity) AS quantity
                     FROM stock_quant sq
                     JOIN stock_location loc ON sq.location_id = loc.id
-                    JOIN stock_warehouse sw ON loc.parent_path LIKE concat('%%/', sw.view_location_id, '/%%')
+                    LEFT JOIN stock_warehouse sw ON loc.parent_path LIKE concat('%%/', sw.view_location_id, '/%%')
                     WHERE sq.quantity > 0
-                        AND loc.usage = 'internal'
-                    GROUP BY sq.product_id, sw.id
+                        AND loc.usage IN ('internal', 'transit')
+                    GROUP BY sq.product_id, sw.id, COALESCE(sw.name, loc.name)
                 ),
-                warehouse_consumption AS (
-                    SELECT DISTINCT
-                        sm.product_id,
-                        sw.id AS warehouse_id
-                    FROM stock_move sm
-                    JOIN stock_location src_loc ON sm.location_id = src_loc.id
-                    JOIN stock_location dest_loc ON sm.location_dest_id = dest_loc.id
-                    JOIN stock_warehouse sw ON src_loc.parent_path LIKE concat('%%/', sw.view_location_id, '/%%')
-                    WHERE sm.state = 'done'
-                        AND src_loc.usage = 'internal'
-                        AND dest_loc.usage = 'customer'
+                main_warehouse_stock AS (
+                    SELECT product_id, warehouse_id, quantity
+                    FROM (
+                        SELECT
+                            product_id,
+                            warehouse_id,
+                            quantity,
+                            ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY quantity DESC, warehouse_name) AS rn
+                        FROM warehouse_stock
+                    ) AS ordered_stock
+                    WHERE rn = 1
+                ),
+                warehouse_summary AS (
+                    SELECT
+                        product_id,
+                        string_agg(quantity_label, ', ' ORDER BY quantity DESC, warehouse_name) AS warehouse_summary
+                    FROM (
+                        SELECT
+                            product_id,
+                            warehouse_name,
+                            to_char(quantity, 'FM999999999.####') || '-' || warehouse_name AS quantity_label,
+                            quantity
+                        FROM warehouse_stock
+                    ) AS labeled_stock
+                    GROUP BY product_id
                 ),
                 total_stock AS (
                     SELECT
@@ -153,7 +172,7 @@ class ReportConsumoAnalisis(models.Model):
                     FROM stock_quant sq
                     JOIN stock_location loc ON sq.location_id = loc.id
                     WHERE sq.quantity > 0
-                        AND loc.usage = 'internal'
+                        AND loc.usage IN ('internal', 'transit')
                     GROUP BY sq.product_id
                 ),
                 purchase_pending AS (
@@ -187,16 +206,15 @@ class ReportConsumoAnalisis(models.Model):
                 product_list AS (
                     SELECT product_id FROM warehouse_stock
                     UNION
-                    SELECT product_id FROM warehouse_consumption
-                    UNION
                     SELECT product_id FROM purchase_pending
                 )
                 SELECT
                     row_number() OVER (ORDER BY pp.id) AS id,
                     pp.id AS product_id,
-                    NULL::integer AS warehouse_id,
-                    COALESCE(ts.total_quantity, 0) AS quantity,
+                    mws.warehouse_id AS warehouse_id,
+                    COALESCE(mws.quantity, 0) AS quantity,
                     COALESCE(ts.total_quantity, 0) AS total_quantity,
+                    COALESCE(ws.warehouse_summary, '') AS warehouse_summary,
                     COALESCE(tp.total_pending_receipt, 0) AS total_pending_receipt,
                     COALESCE(tp.total_pending_receipt, 0) AS pending_order_quantity,
                     poi.purchase_order_name,
@@ -217,6 +235,8 @@ class ReportConsumoAnalisis(models.Model):
                 JOIN product_list pl ON pp.id = pl.product_id
                 LEFT JOIN move_summary ms ON pp.id = ms.product_id
                 LEFT JOIN total_stock ts ON pp.id = ts.product_id
+                LEFT JOIN main_warehouse_stock mws ON pp.id = mws.product_id
+                LEFT JOIN warehouse_summary ws ON pp.id = ws.product_id
                 LEFT JOIN total_purchase_pending tp ON pp.id = tp.product_id
                 LEFT JOIN purchase_order_info poi ON pp.id = poi.product_id
             )

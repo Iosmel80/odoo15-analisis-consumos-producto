@@ -9,7 +9,10 @@
                     <field name="description_purchase"  optional="show"/>
                     <field name="uom_id"  optional="show"/>
                     <field name="categ_id"  optional="show"/>
-                    <field name="quantity" optional="show"/>
+                    <field name="warehouse_id" optional="show"/>
+                    <field name="quantity" string="Existencia Principal" optional="show"/>
+                    <field name="total_quantity" string="Existencia Total" optional="show"/>
+                    <field name="warehouse_summary" string="Existencias por Almacén" optional="show"/>
                     <field name="total_pending_receipt" optional="show"/>
                     <field name="pending_order_quantity" optional="show"/>
                     <field name="purchase_order_name" optional="show"/>
