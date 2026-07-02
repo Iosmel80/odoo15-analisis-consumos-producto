@@ -173,25 +173,34 @@ class ReportConsumoAnalisis(models.Model):
                     FROM purchase_pending
                     GROUP BY product_id
                 ),
-                warehouse_list AS (
-                    SELECT product_id, warehouse_id, SUM(quantity) AS quantity
-                    FROM (
-                        SELECT product_id, warehouse_id, quantity FROM warehouse_stock
-                        UNION ALL
-                        SELECT product_id, warehouse_id, 0.0 AS quantity FROM warehouse_consumption
-                    ) AS all_warehouses
-                    GROUP BY product_id, warehouse_id
+                purchase_order_info AS (
+                    SELECT DISTINCT ON (pol.product_id)
+                        pol.product_id,
+                        po.name AS purchase_order_name,
+                        po.state AS purchase_order_state
+                    FROM purchase_order_line pol
+                    JOIN purchase_order po ON pol.order_id = po.id
+                    WHERE po.state != 'cancel'
+                        AND pol.product_qty > pol.qty_received
+                    ORDER BY pol.product_id, po.date_order DESC, po.id DESC
+                ),
+                product_list AS (
+                    SELECT product_id FROM warehouse_stock
+                    UNION
+                    SELECT product_id FROM warehouse_consumption
+                    UNION
+                    SELECT product_id FROM purchase_pending
                 )
                 SELECT
-                    row_number() OVER (ORDER BY pp.id, wl.warehouse_id) AS id,
+                    row_number() OVER (ORDER BY pp.id) AS id,
                     pp.id AS product_id,
-                    wl.warehouse_id AS warehouse_id,
-                    COALESCE(wl.quantity, 0) AS quantity,
+                    NULL::integer AS warehouse_id,
+                    COALESCE(ts.total_quantity, 0) AS quantity,
                     COALESCE(ts.total_quantity, 0) AS total_quantity,
                     COALESCE(tp.total_pending_receipt, 0) AS total_pending_receipt,
-                    COALESCE(ppd.pending_order_quantity, 0) AS pending_order_quantity,
-                    po.name AS purchase_order_name,
-                    po.state AS purchase_order_state,
+                    COALESCE(tp.total_pending_receipt, 0) AS pending_order_quantity,
+                    poi.purchase_order_name,
+                    poi.purchase_order_state,
                     pp.default_code AS default_code,
                     pt.name AS name,
                     pt.description_purchase AS description_purchase,
@@ -205,11 +214,10 @@ class ReportConsumoAnalisis(models.Model):
                     COALESCE(ms.c_hist, 0) AS consumo_historico
                 FROM product_product pp
                 JOIN product_template pt ON pp.product_tmpl_id = pt.id
-                JOIN warehouse_list wl ON pp.id = wl.product_id
+                JOIN product_list pl ON pp.id = pl.product_id
                 LEFT JOIN move_summary ms ON pp.id = ms.product_id
                 LEFT JOIN total_stock ts ON pp.id = ts.product_id
                 LEFT JOIN total_purchase_pending tp ON pp.id = tp.product_id
-                LEFT JOIN purchase_pending ppd ON pp.id = ppd.product_id
-                LEFT JOIN purchase_order po ON ppd.order_id = po.id
+                LEFT JOIN purchase_order_info poi ON pp.id = poi.product_id
             )
         """ % self._table)
