@@ -9,10 +9,12 @@ class ReportConsumoAnalisis(models.Model):
     # Campos nativos del producto
     product_id = fields.Many2one('product.product', string='DESCRIPCIÓN', readonly=True)
     default_code = fields.Char(string='Código', readonly=True)
-    name = fields.Char(string='Nombre', readonly=True)
+    name = fields.Char(string='Descripción', readonly=True)
     description_purchase = fields.Text(string='TEXTO_COMPRA', readonly=True)
     uom_id = fields.Many2one('uom.uom', string='UM', readonly=True)
     categ_id = fields.Many2one('product.category', string='CATEGORIA', readonly=True)
+    supplier_id = fields.Many2one('res.partner', string='Proveedor', readonly=True)
+    supplier_code = fields.Char(string='Ref. Proveedor', readonly=True)
     
     create_date = fields.Datetime(string='F_ALTA', readonly=True)
     create_uid = fields.Many2one('res.users', string='Creado Por', readonly=True)
@@ -193,15 +195,52 @@ class ReportConsumoAnalisis(models.Model):
                     GROUP BY product_id
                 ),
                 purchase_order_info AS (
-                    SELECT DISTINCT ON (pol.product_id)
-                        pol.product_id,
-                        po.name AS purchase_order_name,
-                        po.state AS purchase_order_state
-                    FROM purchase_order_line pol
-                    JOIN purchase_order po ON pol.order_id = po.id
-                    WHERE po.state != 'cancel'
-                        AND pol.product_qty > pol.qty_received
-                    ORDER BY pol.product_id, po.date_order DESC, po.id DESC
+                    SELECT
+                        pp.product_id,
+                        string_agg(
+                            concat(
+                                to_char(pp.pending_order_quantity, 'FM999999999.####'),
+                                '-',
+                                po.name,
+                                '(',
+                                po.state,
+                                ')'
+                            ),
+                            ', ' ORDER BY po.date_order, po.id
+                        ) AS purchase_order_name,
+                        string_agg(po.state, ', ' ORDER BY po.date_order, po.id) AS purchase_order_state
+                    FROM purchase_pending pp
+                    JOIN purchase_order po ON pp.order_id = po.id
+                    GROUP BY pp.product_id
+                ),
+                supplier_candidates AS (
+                    SELECT
+                        pp.id AS product_id,
+                        psi.name AS supplier_id,
+                        psi.sequence,
+                        psi.id AS supplierinfo_id
+                    FROM product_product pp
+                    JOIN product_template pt ON pp.product_tmpl_id = pt.id
+                    LEFT JOIN product_supplierinfo psi ON psi.product_id = pp.id
+                    WHERE psi.name IS NOT NULL
+                    UNION ALL
+                    SELECT
+                        pp.id AS product_id,
+                        psi.name AS supplier_id,
+                        psi.sequence,
+                        psi.id AS supplierinfo_id
+                    FROM product_product pp
+                    JOIN product_template pt ON pp.product_tmpl_id = pt.id
+                    LEFT JOIN product_supplierinfo psi ON psi.product_tmpl_id = pt.id AND psi.product_id IS NULL
+                    WHERE psi.name IS NOT NULL
+                ),
+                first_supplier AS (
+                    SELECT DISTINCT ON (product_id)
+                        product_id,
+                        supplier_id,
+                        supplierinfo_id
+                    FROM supplier_candidates
+                    ORDER BY product_id, sequence, supplierinfo_id
                 ),
                 product_list AS (
                     SELECT product_id FROM warehouse_stock
@@ -217,8 +256,10 @@ class ReportConsumoAnalisis(models.Model):
                     COALESCE(ws.warehouse_summary, '') AS warehouse_summary,
                     COALESCE(tp.total_pending_receipt, 0) AS total_pending_receipt,
                     COALESCE(tp.total_pending_receipt, 0) AS pending_order_quantity,
-                    poi.purchase_order_name,
-                    poi.purchase_order_state,
+                    COALESCE(poi.purchase_order_name, '') AS purchase_order_name,
+                    COALESCE(poi.purchase_order_state, '') AS purchase_order_state,
+                    fs.supplier_id AS supplier_id,
+                    psi.product_code AS supplier_code,
                     pp.default_code AS default_code,
                     pt.name AS name,
                     pt.description_purchase AS description_purchase,
@@ -239,5 +280,7 @@ class ReportConsumoAnalisis(models.Model):
                 LEFT JOIN warehouse_summary ws ON pp.id = ws.product_id
                 LEFT JOIN total_purchase_pending tp ON pp.id = tp.product_id
                 LEFT JOIN purchase_order_info poi ON pp.id = poi.product_id
+                LEFT JOIN first_supplier fs ON pp.id = fs.product_id
+                LEFT JOIN product_supplierinfo psi ON psi.id = fs.supplierinfo_id
             )
         """ % self._table)

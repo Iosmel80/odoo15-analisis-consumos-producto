@@ -7,13 +7,18 @@
                     <field name="default_code"/>
                     <field name="name"/>
                     <field name="description_purchase"  optional="show"/>
+                    <field name="warehouse_id" optional="show"/>
+                    <field name="supplier_code" optional="show"/>
+                    <field name="supplier_id" optional="show"/>
                     <field name="uom_id"  optional="show"/>
                     <field name="categ_id"  optional="show"/>
-                    <field name="warehouse_id" optional="show"/>
-                    <field name="quantity" string="Existencia Principal" optional="show"/>
+                    
+                    
+                    
+                    <field name="quantity" string="Existencia Principal" optional="hide"/>
                     <field name="total_quantity" string="Existencia Total" optional="show"/>
                     <field name="warehouse_summary" string="Existencias por Almacén" optional="show"/>
-                    <field name="total_pending_receipt" optional="show"/>
+                    <!--<field name="total_pending_receipt" optional="show"/>-->
                     <field name="pending_order_quantity" optional="show"/>
                     <field name="purchase_order_name" optional="show"/>
                     <field name="purchase_order_state" optional="show"/>
@@ -68,13 +73,13 @@
 
         <!-- Acción y Menú -->
         <record id="action_report_consumo_analisis" model="ir.actions.act_window">
-            <field name="name">Análisis de Consumo de Productos</field>
+            <field name="name">Análisis de inventario de Productos</field>
             <field name="res_model">report.consumo.analisis</field>
             <field name="view_mode">tree,pivot,graph</field>
         </record>
 
         <menuitem id="menu_report_consumo_analisis"
-                  name="Análisis de Consumo"
+                  name="Análisis de Inventario"
                   parent="stock.menu_warehouse_report"
                   action="action_report_consumo_analisis"
                   sequence="150"/>
