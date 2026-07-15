@@ -1,6 +1,6 @@
 {
     'name': 'Análisis de Consumo de Productos',
-    'version': '15.0.1.0.0',
+    'version': '15.0.1.1.0',
     'summary': 'Cálculo en tiempo real del consumo histórico y dinámico de productos.',
     'description': """
 Análisis Avanzado de Inventario
@@ -29,6 +29,7 @@ Este módulo optimiza la gestión de stock permitiendo a los analistas evaluar e
         'wizard/wizard_rango_lista_view.xml',
         'views/product_product_view.xml',    # Aquí va la herencia de la ficha del producto
         'views/report_consumo_analisis_view.xml',
+        'views/report_product_consumo_view.xml',
     ],
     
     'installable': True,

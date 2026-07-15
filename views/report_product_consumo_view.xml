@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data> <record id="view_report_consumo_analisis_tree" model="ir.ui.view">
-            <field name="name">report.consumo.analisis.tree</field> 
-            <field name="model">report.consumo.analisis</field>
+    <data>
+        <record id="view_report_product_consumo_tree" model="ir.ui.view">
+            <field name="name">report.product.consumo.tree</field>
+            <field name="model">report.product.consumo</field>
             <field name="arch" type="xml">
-                <tree string="Análisis de Consumo" create="false" edit="false" delete="false">
+                <tree string="Análisis de Consumo de Productos" create="false" edit="false" delete="false">
                     <field name="default_code"/>
                     <field name="name"/>
                     <field name="description_purchase"  optional="show"/>
+                    <field name="quantity" string="Existencia" optional="show"/>
                     <field name="warehouse_id" optional="show"/>
                     <field name="supplier_code" optional="show"/>
                     <field name="supplier_id" optional="show"/>
@@ -23,46 +25,25 @@
                     <field name="categ_id"  optional="show"/>
                     <field name="create_uid" optional="show"/>
                     
-                    <field name="quantity" string="Existencia Principal" optional="hide"/>
                     <field name="total_quantity" string="Existencia Total" optional="show"/>
                     <field name="warehouse_summary" string="Existencias por Almacén" optional="show"/>
-                    <!--<field name="total_pending_receipt" optional="show"/>-->
-                    <field name="pending_order_quantity" optional="show"/>
-                    <field name="purchase_order_name" optional="show"/>
-                    <field name="purchase_order_state" optional="show"/>
                     
-                    <field name="total_quantity" optional="show"/>
-                    <!--<field name="responsible_id"/>-->
-                    <field name="standard_price" optional="show" sum="Total Precio"/>
-                    
-                    
-                    
-                     <!--
-                    <field name="detailed_type"/>
-                    <field name="property_stock_inventory"/>
-                    <field name="qty_available"/>
-                    <field name="reordering_min_qty"/>
-                    <field name="reordering_max_qty"/>
-                    -->
-                    
-                     
+                    <field name="standard_price" optional="show" sum="Total Precio"/> 
                 </tree>
             </field>
         </record>
 
         <!-- Vista Pivot -->
-        <record id="view_report_consumo_analisis_pivot" model="ir.ui.view">
-            <field name="name">report.consumo.analisis.pivot</field> 
-            <field name="model">report.consumo.analisis</field>
+        <record id="view_report_product_consumo_pivot" model="ir.ui.view">
+            <field name="name">report.product.consumo.pivot</field> 
+            <field name="model">report.product.consumo</field>
             <field name="arch" type="xml">
-                <pivot string="Análisis de Consumo" disable_linking="True">
+                <pivot string="Análisis de Consumo de Productos" disable_linking="True">
                     <field name="product_id" type="row"/>
                     <field name="categ_id" type="row" optional="1"/>
                     
                     <field name="standard_price" type="measure"/>
                     <field name="quantity" type="measure"/>
-                    <field name="total_pending_receipt" type="measure"/>
-                    <field name="pending_order_quantity" type="measure"/>
                     <field name="min_quantity" type="measure"/>
                     <field name="max_quantity" type="measure"/>
                     <field name="total_quantity" type="measure"/>
@@ -72,19 +53,20 @@
                     <field name="consumo_historico" type="measure"/>
                 </pivot>
             </field>
-        </record>
+        </record> 
+        
 
-        <!-- Acción y Menú -->
-        <record id="action_report_consumo_analisis" model="ir.actions.act_window">
-            <field name="name">Análisis de inventario de Productos</field>
-            <field name="res_model">report.consumo.analisis</field>
+        <!-- Acción y Menú  -->
+        <record id="action_report_product_consumo" model="ir.actions.act_window">
+            <field name="name">Análisis de Consumo de Productos</field>
+            <field name="res_model">report.product.consumo</field>
             <field name="view_mode">tree,pivot,graph</field>
         </record>
-
-        <menuitem id="menu_report_consumo_analisis"
-                  name="Análisis de Inventario"
+        
+        <menuitem id="menu_report_product_consumo"
+                  name="Análisis de Consumo de Productos"
                   parent="stock.menu_warehouse_report"
-                  action="action_report_consumo_analisis"
-                  sequence="150"/>
-
-    </data> </odoo>
+                  action="action_report_product_consumo"
+                  sequence="151"/>
+    </data>
+</odoo>

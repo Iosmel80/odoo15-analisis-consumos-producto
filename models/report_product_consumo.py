@@ -1,7 +1,7 @@
 from odoo import models, fields, api, tools
 
-class ReportConsumoAnalisis(models.Model):
-    _name = 'report.consumo.analisis'
+class ProductConsumo(models.Model):
+    _name = 'report.product.consumo'
     _description = 'Análisis de Consumo por Producto'
     _auto = False
     _order = 'default_code asc'
@@ -15,6 +15,13 @@ class ReportConsumoAnalisis(models.Model):
     categ_id = fields.Many2one('product.category', string='CATEGORIA', readonly=True)
     supplier_id = fields.Many2one('res.partner', string='Proveedor', readonly=True)
     supplier_code = fields.Char(string='Ref. Proveedor', readonly=True)
+    
+    # 🛠️ NUEVO CAMPO: Tipo de producto para los filtros
+    detailed_type = fields.Selection([
+        ('consu', 'Consumible'),
+        ('product', 'Almacenable'),
+        ('service', 'Servicio')
+    ], string='Tipo de producto', readonly=True)
     
     create_date = fields.Datetime(string='F_ALTA', readonly=True)
     create_uid = fields.Many2one('res.users', string='Creado Por', readonly=True)
@@ -48,22 +55,6 @@ class ReportConsumoAnalisis(models.Model):
     )
     warehouse_summary = fields.Char(
         string='Existencias por Almacén/Ubicación',
-        readonly=True,
-    )
-    total_pending_receipt = fields.Float(
-        string='Total Pendiente de Recepción',
-        readonly=True,
-    )
-    pending_order_quantity = fields.Float(
-        string='Cantidad Pendiente en Pedido',
-        readonly=True,
-    )
-    purchase_order_name = fields.Char(
-        string='Pedido de Compra',
-        readonly=True,
-    )
-    purchase_order_state = fields.Char(
-        string='Estado del Pedido',
         readonly=True,
     )
     min_quantity = fields.Float(
@@ -121,7 +112,7 @@ class ReportConsumoAnalisis(models.Model):
                              THEN sm.product_qty
                              WHEN src_loc.usage = 'customer' AND dest_loc.usage = 'internal' 
                              THEN -sm.product_qty
-                             ELSE 0 END) AS c_hist
+                             ELSE 0 END) AS c_historico
                     FROM stock_move sm
                     JOIN stock_location src_loc ON sm.location_id = src_loc.id
                     JOIN stock_location dest_loc ON sm.location_dest_id = dest_loc.id
@@ -136,7 +127,7 @@ class ReportConsumoAnalisis(models.Model):
                         SUM(sq.quantity) AS quantity
                     FROM stock_quant sq
                     JOIN stock_location loc ON sq.location_id = loc.id
-                    LEFT JOIN stock_warehouse sw ON loc.parent_path LIKE concat('%%/', sw.view_location_id, '/%%')
+                    LEFT JOIN stock_warehouse sw ON loc.parent_path LIKE concat('%%%%/', sw.view_location_id, '/%%%%')
                     WHERE sq.quantity > 0
                         AND loc.usage IN ('internal', 'transit')
                     GROUP BY sq.product_id, sw.id, COALESCE(sw.name, loc.name)
@@ -177,42 +168,6 @@ class ReportConsumoAnalisis(models.Model):
                         AND loc.usage IN ('internal', 'transit')
                     GROUP BY sq.product_id
                 ),
-                purchase_pending AS (
-                    SELECT
-                        pol.product_id,
-                        pol.order_id,
-                        GREATEST(pol.product_qty - pol.qty_received, 0.0) AS pending_order_quantity
-                    FROM purchase_order_line pol
-                    JOIN purchase_order po ON pol.order_id = po.id
-                    WHERE po.state != 'cancel'
-                        AND pol.product_qty > pol.qty_received
-                ),
-                total_purchase_pending AS (
-                    SELECT
-                        product_id,
-                        SUM(pending_order_quantity) AS total_pending_receipt
-                    FROM purchase_pending
-                    GROUP BY product_id
-                ),
-                purchase_order_info AS (
-                    SELECT
-                        pp.product_id,
-                        string_agg(
-                            concat(
-                                to_char(pp.pending_order_quantity, 'FM999999999.####'),
-                                '-',
-                                po.name,
-                                '(',
-                                po.state,
-                                ')'
-                            ),
-                            ', ' ORDER BY po.date_order, po.id
-                        ) AS purchase_order_name,
-                        string_agg(po.state, ', ' ORDER BY po.date_order, po.id) AS purchase_order_state
-                    FROM purchase_pending pp
-                    JOIN purchase_order po ON pp.order_id = po.id
-                    GROUP BY pp.product_id
-                ),
                 supplier_candidates AS (
                     SELECT
                         pp.id AS product_id,
@@ -221,8 +176,7 @@ class ReportConsumoAnalisis(models.Model):
                         psi.id AS supplierinfo_id
                     FROM product_product pp
                     JOIN product_template pt ON pp.product_tmpl_id = pt.id
-                    LEFT JOIN product_supplierinfo psi ON psi.product_id = pp.id
-                    WHERE psi.name IS NOT NULL
+                    INNER JOIN product_supplierinfo psi ON psi.product_id = pp.id
                     UNION ALL
                     SELECT
                         pp.id AS product_id,
@@ -231,8 +185,7 @@ class ReportConsumoAnalisis(models.Model):
                         psi.id AS supplierinfo_id
                     FROM product_product pp
                     JOIN product_template pt ON pp.product_tmpl_id = pt.id
-                    LEFT JOIN product_supplierinfo psi ON psi.product_tmpl_id = pt.id AND psi.product_id IS NULL
-                    WHERE psi.name IS NOT NULL
+                    INNER JOIN product_supplierinfo psi ON psi.product_tmpl_id = pt.id AND psi.product_id IS NULL
                 ),
                 first_supplier AS (
                     SELECT DISTINCT ON (product_id)
@@ -241,11 +194,6 @@ class ReportConsumoAnalisis(models.Model):
                         supplierinfo_id
                     FROM supplier_candidates
                     ORDER BY product_id, sequence, supplierinfo_id
-                ),
-                product_list AS (
-                    SELECT product_id FROM warehouse_stock
-                    UNION
-                    SELECT product_id FROM purchase_pending
                 )
                 SELECT
                     row_number() OVER (ORDER BY pp.id) AS id,
@@ -254,10 +202,6 @@ class ReportConsumoAnalisis(models.Model):
                     COALESCE(mws.quantity, 0) AS quantity,
                     COALESCE(ts.total_quantity, 0) AS total_quantity,
                     COALESCE(ws.warehouse_summary, '') AS warehouse_summary,
-                    COALESCE(tp.total_pending_receipt, 0) AS total_pending_receipt,
-                    COALESCE(tp.total_pending_receipt, 0) AS pending_order_quantity,
-                    COALESCE(poi.purchase_order_name, '') AS purchase_order_name,
-                    COALESCE(poi.purchase_order_state, '') AS purchase_order_state,
                     fs.supplier_id AS supplier_id,
                     psi.product_code AS supplier_code,
                     pp.default_code AS default_code,
@@ -265,21 +209,19 @@ class ReportConsumoAnalisis(models.Model):
                     pt.description_purchase AS description_purchase,
                     pt.uom_id AS uom_id,
                     pt.categ_id AS categ_id,
+                    pt.detailed_type AS detailed_type, -- 🛠️ SE AGREGA AL SELECT FINAL
                     pt.create_date AS create_date,
                     pt.create_uid AS create_uid,
                     COALESCE(ms.c_3m, 0) AS consumo_3_meses,
                     COALESCE(ms.c_1y, 0) AS consumo_1_ano,
                     COALESCE(ms.c_3y, 0) AS consumo_3_anos,
-                    COALESCE(ms.c_hist, 0) AS consumo_historico
+                    COALESCE(ms.c_historico, 0) AS consumo_historico
                 FROM product_product pp
                 JOIN product_template pt ON pp.product_tmpl_id = pt.id
-                JOIN product_list pl ON pp.id = pl.product_id
                 LEFT JOIN move_summary ms ON pp.id = ms.product_id
                 LEFT JOIN total_stock ts ON pp.id = ts.product_id
                 LEFT JOIN main_warehouse_stock mws ON pp.id = mws.product_id
                 LEFT JOIN warehouse_summary ws ON pp.id = ws.product_id
-                LEFT JOIN total_purchase_pending tp ON pp.id = tp.product_id
-                LEFT JOIN purchase_order_info poi ON pp.id = poi.product_id
                 LEFT JOIN first_supplier fs ON pp.id = fs.product_id
                 LEFT JOIN product_supplierinfo psi ON psi.id = fs.supplierinfo_id
             )

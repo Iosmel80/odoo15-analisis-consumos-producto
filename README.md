@@ -23,7 +23,6 @@ El módulo transforma la información de movimientos de stock en indicadores de 
   - Información de existencia
   - Existencia total
   - Existencias por almacén o ubicación
-  - Pedidos de compra pendientes
   - Proveedores asociados
   - Precio promedio y cantidades mínimas/máximas de reabastecimiento
 
@@ -69,7 +68,7 @@ Una vez instalado, el usuario podrá:
 
 - Entrar a la ficha de un producto y ver sus indicadores de consumo.
 - Abrir el asistente de análisis para ver el consumo en un periodo definido.
-- Consultar la vista de análisis de inventario desde el menú de reportes de stock.
+- Consultar la vista de Análisis de Consumo de Productos desde el menú de reportes de stock.
 - Utilizar filtros en el listado de productos para analizar consumos por rango temporal.
 
 ## Estructura del módulo
